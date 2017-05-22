@@ -161,9 +161,6 @@ module GithubWorkflow
             }
           )
         ).tap do |response|
-          puts response.status
-          puts response.body
-
           if response.success?
             pass("Issue converted to Pull Request")
             say_info(JSON.parse(response.body)["url"])
