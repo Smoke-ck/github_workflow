@@ -23,6 +23,8 @@ module GithubWorkflow
 
     desc "create_pr", "Convert Issue to Pull Request"
 
+    method_option :base_branch, aliases: "-b", type: :string
+
     def create_pr
       ensure_github_config_present
       ensure_origin_exists
@@ -30,6 +32,8 @@ module GithubWorkflow
     end
 
     desc "push_and_pr", "Push branch to origin and convert Issue to Pull Request"
+
+    method_option :base_branch, aliases: "-b", type: :string
 
     def push_and_pr
       ensure_github_config_present
@@ -152,11 +156,14 @@ module GithubWorkflow
           JSON.generate(
             {
               head: current_branch,
-              base: "master",
+              base: options[:base_branch] || "master",
               issue: issue_number_from_branch
             }
           )
         ).tap do |response|
+          puts response.status
+          puts response.body
+
           if response.success?
             pass("Issue converted to Pull Request")
             say_info(JSON.parse(response.body)["url"])
