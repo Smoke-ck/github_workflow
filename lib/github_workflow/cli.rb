@@ -106,7 +106,7 @@ module GithubWorkflow
 
       def ensure_github_config_present
         unless project_config && project_config["oauth_token"] && project_config["user_and_repo"]
-          failure('Please add `.github` file containing `{ "oauth": "TOKEN", "repo": "user/repo" }`')
+          failure('Please add `.github` file containing `{ "oauth_token": "TOKEN", "user_and_repo": "user/repo" }`')
         end
       end
 
