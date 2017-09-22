@@ -196,7 +196,7 @@ module GithubWorkflow
       end
 
       def rebase_master
-        say_info("Fetching changes and rebaseing master")
+        say_info("Fetching changes and rebasing master")
 
         if success?("git pull --rebase")
           pass("Fetched and rebased")
