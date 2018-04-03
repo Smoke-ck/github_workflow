@@ -16,9 +16,11 @@ module GithubWorkflow
 
     def start
       ensure_github_config_present
+      stash
       checkout_master
       rebase_master
       create_branch
+      stash_pop
     end
 
     desc "create_pr", "Convert Issue to Pull Request"
@@ -212,6 +214,23 @@ module GithubWorkflow
           pass("Checked out master")
         else
           failure("Failed to checkout master")
+        end
+      end
+
+      def stash
+        `git diff --quiet`
+
+        if !$?.success?
+          say_info("Stashing local changes")
+          `git stash --quiet`
+          @stashed = true
+        end
+      end
+
+      def stash_pop
+        if @stashed
+          say_info("Stash pop")
+          `git stash pop --quiet`
         end
       end
 
