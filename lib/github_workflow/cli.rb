@@ -123,7 +123,7 @@ module GithubWorkflow
       end
 
       def push_and_set_upstream
-        `git rev-parse --abbrev-ref HEAD | XARGS git push origin -u`
+        `git rev-parse --abbrev-ref HEAD | xargs git push origin -u`
       end
 
       def create_issue
