@@ -159,7 +159,7 @@ module GithubWorkflow
             {
               head: current_branch,
               base: options[:base_branch] || "master",
-              issue: issue_number_from_branch
+              issue: issue_number_from_branch.to_i
             }
           )
         ).tap do |response|
