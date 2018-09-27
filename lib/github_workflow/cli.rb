@@ -24,7 +24,6 @@ module GithubWorkflow
     end
 
     desc "create_pr", "Convert Issue to Pull Request"
-
     method_option :base_branch, aliases: "-b", type: :string
 
     def create_pr
@@ -34,9 +33,7 @@ module GithubWorkflow
     end
 
     desc "push_and_pr", "Push branch to origin and convert Issue to Pull Request"
-
     method_option :base_branch, aliases: "-b", type: :string
-
     def push_and_pr
       ensure_github_config_present
       push_and_set_upstream
@@ -44,7 +41,6 @@ module GithubWorkflow
     end
 
     desc "status", "Check PR CI status"
-
     def status
       ensure_github_config_present
       ensure_origin_exists
@@ -69,7 +65,6 @@ module GithubWorkflow
     end
 
     desc "info", "Print out issue description"
-
     def info
       ensure_github_config_present
       response = JSON.parse(github_client.get("repos/#{user_and_repo}/issues/#{issue_number_from_branch}?access_token=#{oauth_token}").body)
@@ -77,7 +72,6 @@ module GithubWorkflow
     end
 
     desc "open", "Open issue or PR in browser"
-
     def open
       ensure_github_config_present
       response = JSON.parse(github_client.get("repos/#{user_and_repo}/issues/#{issue_number_from_branch}?access_token=#{oauth_token}").body)
@@ -85,9 +79,7 @@ module GithubWorkflow
     end
 
     desc "create_and_start", "Create and start issue"
-
     method_option :name, aliases: "-m", type: :string, required: true
-
     def create_and_start
       ensure_github_config_present
       create_issue
