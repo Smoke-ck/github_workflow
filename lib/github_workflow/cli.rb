@@ -7,6 +7,8 @@ require "terminal-table"
 
 module GithubWorkflow
   class Cli < Thor
+    PROCEED_TEXT = "Proceed? [y,yes]: ".freeze
+
     include Thor::Actions
 
     default_task :start
@@ -67,8 +69,7 @@ module GithubWorkflow
     desc "info", "Print out issue description"
     def info
       ensure_github_config_present
-      response = JSON.parse(github_client.get("repos/#{user_and_repo}/issues/#{issue_number_from_branch}?access_token=#{oauth_token}").body)
-      puts response["body"]
+      puts get_issue(issue_number_from_branch)["body"]
     end
 
     desc "open", "Open issue or PR in browser"
@@ -85,7 +86,38 @@ module GithubWorkflow
       create_issue
     end
 
+    desc "cleanup", "Remove merged PR branches"
+    def cleanup
+      say_info("Checking merge status")
+      merged_pr_branches
+      puts "\n"
+
+      if merged_pr_branches.any?
+        say_info("Are you sure you want to delete the branches with checkmarks?")
+
+        if yes?(PROCEED_TEXT)
+          pass("Deleting Branches")
+
+          merged_pr_branches.each do |branch|
+            `git branch -D #{branch}`
+          end
+        else
+          failure("Cleanup aborted")
+        end
+      else
+        failure("No merged branches to delete")
+      end
+    end
+
     no_tasks do
+      def get_issue(id)
+        JSON.parse(github_client.get("repos/#{user_and_repo}/issues/#{id}?access_token=#{oauth_token}").body)
+      end
+
+      def get_pr(id)
+        JSON.parse(github_client.get("repos/#{user_and_repo}/pulls/#{id}?access_token=#{oauth_token}").body)
+      end
+
       def create_branch
         `git checkout -b #{branch_name_for_issue_number}`
       end
@@ -224,6 +256,21 @@ module GithubWorkflow
           say_info("Stash pop")
           `git stash pop --quiet`
         end
+      end
+
+      def merged_pr_branches
+        @merged_pr_branches ||=
+          pr_branches.map do |branch|
+            id = branch.split("_")[0].to_i
+            merged = !!get_pr(id)["merged"]
+            print merged ? "✅ " : "❌ "
+            puts " #{branch}"
+            merged ? branch : nil
+          end.compact
+      end
+
+      def pr_branches
+        `git branch`.gsub(" ", "").split("\n").select { |br| br.match /^[0-9]/ }
       end
 
       def success?(command)
