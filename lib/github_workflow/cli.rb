@@ -109,6 +109,13 @@ module GithubWorkflow
       end
     end
 
+    desc "deploy_notes", "Generate Deploy notes for a range of commits"
+    method_option :commit_range, aliases: "-r", type: :string, required: true
+
+    def deploy_notes
+      puts formatted_deploy_notes
+    end
+
     no_tasks do
       def get_issue(id)
         JSON.parse(github_client.get("repos/#{user_and_repo}/issues/#{id}?access_token=#{oauth_token}").body)
@@ -271,6 +278,39 @@ module GithubWorkflow
 
       def pr_branches
         `git branch`.gsub(" ", "").split("\n").select { |br| br.match /^[0-9]/ }
+      end
+
+      def commits_for_range
+        JSON.parse(github_client.get("repos/#{user_and_repo}/compare/#{options[:commit_range]}?access_token=#{oauth_token}").body)
+      end
+
+      def pull_request_in_commit_range
+        pr_ids = commits_for_range["commits"].map do |commit|
+          commit.dig("commit", "message").to_s.match(/(?<=\[#)\d{4,5}(?=\])/).to_s.to_i
+        end.uniq.compact
+
+        prs = pr_ids.map do |id|
+          say_info("Fetching Pull Request ##{id}")
+          pr = github_client.get("repos/#{user_and_repo}/pulls/#{id}?access_token=#{oauth_token}")
+
+          if pr.status == 404
+            JSON.parse(github_client.get("repos/#{user_and_repo}/issues/#{id}?access_token=#{oauth_token}").body)
+          else
+            JSON.parse(pr.body)
+          end
+        end
+      end
+
+      def formatted_deploy_notes
+        pull_request_in_commit_range.map do |pr|
+          deploy_note = pr["body"].to_s.match(/(?<=Deploy Note\:\*\*)(.*)(?=\r)/).to_s.strip
+
+          if deploy_note.length > 0
+            "- #{deploy_note}"
+          else
+            %Q{Missing deploy note: #{pr["title"]}}
+          end
+        end.unshift("[DaisyBill]")
       end
 
       def success?(command)
