@@ -303,7 +303,7 @@ module GithubWorkflow
 
       def formatted_deploy_notes
         pull_request_in_commit_range.map do |pr|
-          deploy_note = pr["body"].to_s.match(/(?<=Deploy Note\:\*\*)(.*)(?=\r)/).to_s.strip
+          deploy_note = pr["body"].to_s.split("**Deploy Note:**")[1].to_s.split(/\n/)[0].to_s
 
           if deploy_note.length > 0
             "- #{deploy_note}"
