@@ -109,6 +109,24 @@ module GithubWorkflow
       end
     end
 
+    desc "rws", "Get developers busyness of review PRs"
+    def rws
+      ensure_github_config_present
+      developers = []
+      get_prs_list.each { |pr| developers << pr["requested_reviewers"].map{ |r| r["login"] } }
+
+      devs = developers.flatten.group_by{ |i| i }.map{|k,v| [k, v.count] }
+      if devs.any?
+        table = Terminal::Table.new(style: { width: 50 }) do |table_rows|
+          table_rows << ["Developer", "Requested PRs Count"]
+          table_rows << :separator
+          devs.each { |dev| table_rows << dev }
+        end
+
+        puts table
+      end
+    end
+
     desc "deploy_notes", "Generate Deploy notes for a range of commits"
     method_option :commit_range, aliases: "-r", type: :string, required: true
 
@@ -123,6 +141,10 @@ module GithubWorkflow
 
       def get_pr(id)
         JSON.parse(github_client.get("repos/#{user_and_repo}/pulls/#{id}?access_token=#{oauth_token}").body)
+      end
+
+      def get_prs_list
+        JSON.parse(github_client.get("repos/#{user_and_repo}/pulls?access_token=#{oauth_token}").body)
       end
 
       def create_branch
