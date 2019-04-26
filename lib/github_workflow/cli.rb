@@ -109,6 +109,23 @@ module GithubWorkflow
       end
     end
 
+    desc "reviews", "Displays count of requested reviews for each user"
+    def reviews
+      ensure_github_config_present
+      reviewers = get_prs_list.map { |pr| pr["requested_reviewers"].map { |r| r["login"] } }.flatten
+      reviewer_counts = reviewers.group_by { |i| i }.map { |k, v| [k, v.count] }
+
+      if reviewer_counts.any?
+        table = Terminal::Table.new(style: { width: 50 }) do |table_rows|
+          table_rows << ["Username", "Requested PRs Count"]
+          table_rows << :separator
+          reviewer_counts.each { |reviewer_count| table_rows << reviewer_count }
+        end
+
+        puts table
+      end
+    end
+
     desc "deploy_notes", "Generate Deploy notes for a range of commits"
     method_option :commit_range, aliases: "-r", type: :string, required: true
 
@@ -123,6 +140,10 @@ module GithubWorkflow
 
       def get_pr(id)
         JSON.parse(github_client.get("repos/#{user_and_repo}/pulls/#{id}?access_token=#{oauth_token}").body)
+      end
+
+      def get_prs_list
+        JSON.parse(github_client.get("repos/#{user_and_repo}/pulls?access_token=#{oauth_token}&per_page=100").body)
       end
 
       def create_branch
