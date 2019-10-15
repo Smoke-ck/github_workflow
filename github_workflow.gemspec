@@ -20,7 +20,9 @@ Gem::Specification.new do |spec|
   spec.add_dependency "thor", "~> 0.19"
   spec.add_dependency "faraday", "~> 0.11"
   spec.add_dependency "terminal-table", "~> 1.5"
+  spec.add_dependency "ruby-trello", "~> 2.1"
 
   spec.add_development_dependency "bundler"
+  spec.add_development_dependency "pry"
   spec.add_development_dependency "rake", "~> 10.0"
 end

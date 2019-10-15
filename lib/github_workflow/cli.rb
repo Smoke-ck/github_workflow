@@ -4,6 +4,7 @@ require "thor"
 require "open3"
 require "json"
 require "terminal-table"
+require "trello"
 
 module GithubWorkflow
   class Cli < Thor
@@ -133,7 +134,82 @@ module GithubWorkflow
       puts formatted_deploy_notes
     end
 
+    desc "trello", "Create issue from card"
+    method_option :card_number, aliases: "-i", type: :string, required: true
+
+    def trello
+      ensure_github_config_present
+      ensure_trello_config_present
+      init_trello
+      set_trello_card
+      create_issue_from_trello_card
+      stash
+      checkout_master
+      rebase_master
+      create_branch
+      stash_pop
+    end
+
+
     no_tasks do
+      def create_issue_from_trello_card
+        say_info("Creating issue")
+
+        issue_params = {
+          title: trello_card.name,
+          body: issue_body_from_trello_card,
+          assignees: [current_github_username],
+          labels: issue_labels_from_trello_card
+        }
+
+        response = JSON.parse(github_client.post("repos/#{user_and_repo}/issues?access_token=#{oauth_token}", issue_params.to_json).body)
+
+        @issue_id = response["number"]
+      end
+
+      def issue_body_from_trello_card
+        deploy_note = trello_card.custom_field_items.detect { |cfi| cfi.custom_field.name == "Deploy Note" }.value["text"]
+
+        body = <<~BODY
+        #{trello_card.desc}
+
+        **Deploy Note:** #{deploy_note}
+        BODY
+      end
+
+      def current_github_username
+        JSON.parse(github_client.get("user?access_token=#{oauth_token}").body)["login"]
+      end
+
+      def issue_labels_from_trello_card
+        labels = trello_card.labels.map(&:name)
+
+        product_review_type = trello_card.custom_field_items.detect do |cfi|
+          cfi.custom_field.name == "Product Review"
+        end
+
+        if product_review_type && ["Review App", "Screenshot"].include?(product_review_type.option_value["text"])
+          labels << "Product Review Required"
+        end
+
+        priority = trello_card.custom_field_items.detect do |cfi|
+          cfi.custom_field.name == "Priority"
+        end
+
+        if priority && priority.option_value["text"].present?
+          priority_titleized = priority.option_value["text"]
+          labels << "Priority: #{priority_titleized}"
+        end
+      end
+
+      def set_trello_card
+        say_info("Fetching trello card")
+        trello_board = Trello::Board.find(project_config["trello_board_id"])
+        @trello_card = trello_board.cards.detect { |card| card.short_id == options["card_number"].to_i }
+      end
+
+      attr_reader :trello_card
+
       def get_issue(id)
         JSON.parse(github_client.get("repos/#{user_and_repo}/issues/#{id}?access_token=#{oauth_token}").body)
       end
@@ -161,6 +237,23 @@ module GithubWorkflow
       def ensure_github_config_present
         unless project_config && project_config["oauth_token"] && project_config["user_and_repo"]
           failure('Please add `.github` file containing `{ "oauth_token": "TOKEN", "user_and_repo": "user/repo" }`')
+        end
+      end
+
+      def ensure_trello_config_present
+        unless project_config &&
+            project_config["trello_board_id"] &&
+            project_config["trello_key"] &&
+            project_config["trello_token"]
+
+          failure('Please add `.github` file containing `{ "trello_key": "KEY", "trello_token": "TOKEN" }`')
+        end
+      end
+
+      def init_trello
+        Trello.configure do |config|
+          config.developer_public_key = project_config["trello_key"]
+          config.member_token = project_config["trello_token"]
         end
       end
 
