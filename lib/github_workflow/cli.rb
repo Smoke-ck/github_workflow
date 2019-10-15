@@ -150,8 +150,31 @@ module GithubWorkflow
       stash_pop
     end
 
-
     no_tasks do
+      def get_issue(id)
+        JSON.parse(github_client.get("repos/#{user_and_repo}/issues/#{id}?access_token=#{oauth_token}").body)
+      end
+
+      def get_pr(id)
+        JSON.parse(github_client.get("repos/#{user_and_repo}/pulls/#{id}?access_token=#{oauth_token}").body)
+      end
+
+      def get_prs_list
+        JSON.parse(github_client.get("repos/#{user_and_repo}/pulls?access_token=#{oauth_token}&per_page=100").body)
+      end
+
+      def create_branch
+        `git checkout -b #{branch_name_for_issue_number}`
+      end
+
+      def ensure_origin_exists
+        Open3.capture2("git rev-parse --abbrev-ref --symbolic-full-name @{u}").tap do |_, status|
+          unless status.success?
+            failure("Upstream branch does not exist. Please set before creating pull request. E.g., `git push -u origin branch_name`")
+          end
+        end
+      end
+
       def create_issue_from_trello_card
         say_info("Creating issue")
 
@@ -208,32 +231,9 @@ module GithubWorkflow
         @trello_card = trello_board.cards.detect { |card| card.short_id == options["card_number"].to_i }
       end
 
-      attr_reader :trello_card
-
-      def get_issue(id)
-        JSON.parse(github_client.get("repos/#{user_and_repo}/issues/#{id}?access_token=#{oauth_token}").body)
+      def trello_card
+        @trello_card
       end
-
-      def get_pr(id)
-        JSON.parse(github_client.get("repos/#{user_and_repo}/pulls/#{id}?access_token=#{oauth_token}").body)
-      end
-
-      def get_prs_list
-        JSON.parse(github_client.get("repos/#{user_and_repo}/pulls?access_token=#{oauth_token}&per_page=100").body)
-      end
-
-      def create_branch
-        `git checkout -b #{branch_name_for_issue_number}`
-      end
-
-      def ensure_origin_exists
-        Open3.capture2("git rev-parse --abbrev-ref --symbolic-full-name @{u}").tap do |_, status|
-          unless status.success?
-            failure("Upstream branch does not exist. Please set before creating pull request. E.g., `git push -u origin branch_name`")
-          end
-        end
-      end
-
       def ensure_github_config_present
         unless project_config && project_config["oauth_token"] && project_config["user_and_repo"]
           failure('Please add `.github` file containing `{ "oauth_token": "TOKEN", "user_and_repo": "user/repo" }`')
