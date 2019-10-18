@@ -191,13 +191,15 @@ module GithubWorkflow
       end
 
       def issue_body_from_trello_card
-        deploy_note = trello_card.custom_field_items.detect { |cfi| cfi.custom_field.name == "Deploy Note" }.value["text"]
+        [trello_card.desc, trello_deploy_note].compact.join("\n\n")
+      end
 
-        body = <<~BODY
-        #{trello_card.desc}
+      def trello_deploy_note
+        custom_field = trello_card.custom_field_items.detect { |cfi| cfi.custom_field.name == "Deploy Note" }
 
-        **Deploy Note:** #{deploy_note}
-        BODY
+        if custom_field.present?
+          "**Deploy Note:** #{custom_field.value['text']}"
+        end
       end
 
       def current_github_username
@@ -223,6 +225,8 @@ module GithubWorkflow
           priority_titleized = priority.option_value["text"]
           labels << "Priority: #{priority_titleized}"
         end
+
+        labels.compact
       end
 
       def set_trello_card
