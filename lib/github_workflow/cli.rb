@@ -182,7 +182,7 @@ module GithubWorkflow
           title: trello_card.name,
           body: issue_body_from_trello_card,
           assignees: [current_github_username],
-          labels: issue_labels_from_trello_card
+          labels: trello_card.labels.map(&:name)
         }
 
         response = JSON.parse(github_client.post("repos/#{user_and_repo}/issues?access_token=#{oauth_token}", issue_params.to_json).body)
@@ -212,29 +212,6 @@ module GithubWorkflow
 
       def current_github_username
         JSON.parse(github_client.get("user?access_token=#{oauth_token}").body)["login"]
-      end
-
-      def issue_labels_from_trello_card
-        labels = trello_card.labels.map(&:name)
-
-        product_review_type = trello_card.custom_field_items.detect do |cfi|
-          cfi.custom_field.name == "Product Review"
-        end
-
-        if product_review_type && ["Review App", "Screenshot"].include?(product_review_type.option_value["text"])
-          labels << "Product Review Required"
-        end
-
-        priority = trello_card.custom_field_items.detect do |cfi|
-          cfi.custom_field.name == "Priority"
-        end
-
-        if priority && priority.option_value["text"].present?
-          priority_titleized = priority.option_value["text"]
-          labels << "Priority: #{priority_titleized}"
-        end
-
-        labels.compact
       end
 
       def set_trello_card
