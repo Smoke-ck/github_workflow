@@ -191,7 +191,7 @@ module GithubWorkflow
       end
 
       def issue_body_from_trello_card
-        [trello_card.desc, trello_deploy_note].compact.join("\n\n")
+        [trello_card.desc, trello_deploy_note, trello_product_review_type].compact.join("\n\n")
       end
 
       def trello_deploy_note
@@ -199,6 +199,14 @@ module GithubWorkflow
 
         if custom_field.present?
           "**Deploy Note:** #{custom_field.value['text']}"
+        end
+      end
+
+      def trello_product_review_type
+        custom_field = trello_card.custom_field_items.detect { |cfi| cfi.custom_field.name == "Product Review" }
+
+        if custom_field.present?
+          "**Product Review:** #{custom_field.option_value['text']}"
         end
       end
 
@@ -238,6 +246,7 @@ module GithubWorkflow
       def trello_card
         @trello_card
       end
+
       def ensure_github_config_present
         unless project_config && project_config["oauth_token"] && project_config["user_and_repo"]
           failure('Please add `.github` file containing `{ "oauth_token": "TOKEN", "user_and_repo": "user/repo" }`')
