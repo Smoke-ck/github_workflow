@@ -191,7 +191,15 @@ module GithubWorkflow
       end
 
       def issue_body_from_trello_card
-        [trello_card.desc, trello_deploy_note, trello_product_review_type].compact.join("\n\n")
+        [trello_card.desc, trello_deploy_note, trello_product_review_type, trello_pm].compact.join("\n\n")
+      end
+
+      def trello_pm
+        custom_field = trello_card.custom_field_items.detect { |cfi| cfi.custom_field.name == "PM" }
+
+        if custom_field.present?
+          "**Responsible:** #{custom_field.option_value['text']}"
+        end
       end
 
       def trello_deploy_note
