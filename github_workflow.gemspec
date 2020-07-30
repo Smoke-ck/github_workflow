@@ -17,7 +17,7 @@ Gem::Specification.new do |spec|
   spec.executables   = spec.files.grep(%r{^bin/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
 
-  spec.add_dependency "thor", "~> 0.19"
+  spec.add_dependency "thor", "~> 1.0.1"
   spec.add_dependency "faraday", "~> 0.11"
   spec.add_dependency "terminal-table", "~> 1.5"
   spec.add_dependency "ruby-trello", "~> 2.1"
