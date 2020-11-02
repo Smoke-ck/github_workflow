@@ -12,7 +12,7 @@ module GithubWorkflow
 
     include Thor::Actions
 
-    default_task :start
+    default_task :trello
 
     desc "start", "Create branch named with issue number and issue title"
     method_option :issue_id, aliases: "-i", type: :string, required: true
