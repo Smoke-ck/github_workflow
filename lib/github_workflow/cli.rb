@@ -20,8 +20,8 @@ module GithubWorkflow
     def start
       ensure_github_config_present
       stash
-      checkout_master
-      rebase_master
+      checkout_main
+      rebase_main
       create_branch
       stash_pop
     end
@@ -144,8 +144,8 @@ module GithubWorkflow
       set_trello_card
       create_issue_from_trello_card
       stash
-      checkout_master
-      rebase_master
+      checkout_main
+      rebase_main
       create_branch
       stash_pop
     end
@@ -301,7 +301,7 @@ module GithubWorkflow
           JSON.generate(
             {
               head: current_branch,
-              base: options[:base_branch] || "master",
+              base: options[:base_branch] || "main",
               issue: issue_number_from_branch.to_i
             }
           )
@@ -340,8 +340,8 @@ module GithubWorkflow
         end
       end
 
-      def rebase_master
-        say_info("Fetching changes and rebasing master")
+      def rebase_main
+        say_info("Fetching changes and rebasing main")
 
         if success?("git pull --rebase")
           pass("Fetched and rebased")
@@ -350,13 +350,13 @@ module GithubWorkflow
         end
       end
 
-      def checkout_master
-        say_info("Checking out master")
+      def checkout_main
+        say_info("Checking out main")
 
-        if success?("git checkout master")
-          pass("Checked out master")
+        if success?("git checkout main")
+          pass("Checked out main")
         else
-          failure("Failed to checkout master")
+          failure("Failed to checkout main")
         end
       end
 
