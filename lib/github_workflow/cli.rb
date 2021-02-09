@@ -1,4 +1,5 @@
 require "rubygems"
+require "pry"
 require "faraday"
 require "thor"
 require "open3"
@@ -10,13 +11,51 @@ module GithubWorkflow
   class Cli < Thor
     PROCEED_TEXT = "Proceed? [y,yes]: ".freeze
 
+    GITHUB_CONFIG = <<~TEXT
+      {
+        "oauth_token":              "TOKEN",
+        "user_and_repo":            "ORG/REPO",
+        "trello_key":               "KEY",
+        "trello_token":             "TOKEN",
+        "trello_board_id":          "BOARD_ID",
+        "trello_platform_board_id": "BOARD_ID"
+      }
+    TEXT
+
     include Thor::Actions
 
     default_task :trello
 
+    desc "trello", "Create issue from card"
+    method_option :card_number, aliases: "-i", type: :string, required: true
+    def trello
+      ensure_github_config_present
+      init_trello
+      set_trello_card(type: nil)
+      create_issue_from_trello_card
+      stash
+      checkout_main
+      rebase_main
+      create_branch
+      stash_pop
+    end
+
+    desc "platform", "Create issue from card"
+    method_option :card_number, aliases: "-i", type: :string, required: true
+    def platform
+      ensure_github_config_present
+      init_trello
+      set_trello_card(type: :platform)
+      create_issue_from_trello_card
+      stash
+      checkout_main
+      rebase_main
+      create_branch
+      stash_pop
+    end
+
     desc "start", "Create branch named with issue number and issue title"
     method_option :issue_id, aliases: "-i", type: :string, required: true
-
     def start
       ensure_github_config_present
       stash
@@ -28,7 +67,6 @@ module GithubWorkflow
 
     desc "create_pr", "Convert Issue to Pull Request"
     method_option :base_branch, aliases: "-b", type: :string
-
     def create_pr
       ensure_github_config_present
       ensure_origin_exists
@@ -134,22 +172,6 @@ module GithubWorkflow
       puts formatted_deploy_notes
     end
 
-    desc "trello", "Create issue from card"
-    method_option :card_number, aliases: "-i", type: :string, required: true
-
-    def trello
-      ensure_github_config_present
-      ensure_trello_config_present
-      init_trello
-      set_trello_card
-      create_issue_from_trello_card
-      stash
-      checkout_main
-      rebase_main
-      create_branch
-      stash_pop
-    end
-
     no_tasks do
       def get_issue(id)
         JSON.parse(github_client.get("repos/#{user_and_repo}/issues/#{id}?access_token=#{oauth_token}").body)
@@ -222,9 +244,16 @@ module GithubWorkflow
         JSON.parse(github_client.get("user?access_token=#{oauth_token}").body)["login"]
       end
 
-      def set_trello_card
+      def set_trello_card(type:)
         say_info("Fetching trello card")
-        trello_board = Trello::Board.find(project_config["trello_board_id"])
+
+        trello_board =
+          if type
+            Trello::Board.find(project_config["trello_#{type}_board_id"])
+          else
+            Trello::Board.find(project_config["trello_board_id"])
+          end
+
         @trello_card = trello_board.cards.detect { |card| card.short_id == options["card_number"].to_i }
       end
 
@@ -233,18 +262,8 @@ module GithubWorkflow
       end
 
       def ensure_github_config_present
-        unless project_config && project_config["oauth_token"] && project_config["user_and_repo"]
-          failure('Please add `.github` file containing `{ "oauth_token": "TOKEN", "user_and_repo": "user/repo" }`')
-        end
-      end
-
-      def ensure_trello_config_present
-        unless project_config &&
-            project_config["trello_board_id"] &&
-            project_config["trello_key"] &&
-            project_config["trello_token"]
-
-          failure('Please add `.github` file containing `{ "trello_key": "KEY", "trello_token": "TOKEN" }`')
+        if project_config.nil? || (JSON.parse(GITHUB_CONFIG).keys - project_config.keys).any?
+          failure("Please add `.github` file containing:\n#{GITHUB_CONFIG}")
         end
       end
 
