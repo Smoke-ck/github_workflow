@@ -362,7 +362,7 @@ module GithubWorkflow
       def rebase_main
         say_info("Fetching changes and rebasing main")
 
-        if success?("git pull --rebase")
+        if success?("git pull origin main:main --rebase")
           pass("Fetched and rebased")
         else
           failure("Failed to fetch or rebase")
