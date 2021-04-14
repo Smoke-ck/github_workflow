@@ -186,7 +186,7 @@ module GithubWorkflow
       end
 
       def create_branch
-        `git checkout -b #{branch_name_for_issue_number}`
+        `git checkout -b #{branch_name_for_issue_number} main`
       end
 
       def ensure_origin_exists
