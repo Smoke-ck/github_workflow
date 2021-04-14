@@ -34,7 +34,6 @@ module GithubWorkflow
       set_trello_card(type: nil)
       create_issue_from_trello_card
       stash
-      checkout_main
       rebase_main
       create_branch
       stash_pop
@@ -48,7 +47,6 @@ module GithubWorkflow
       set_trello_card(type: :platform)
       create_issue_from_trello_card
       stash
-      checkout_main
       rebase_main
       create_branch
       stash_pop
@@ -59,7 +57,6 @@ module GithubWorkflow
     def start
       ensure_github_config_present
       stash
-      checkout_main
       rebase_main
       create_branch
       stash_pop
@@ -366,16 +363,6 @@ module GithubWorkflow
           pass("Fetched and rebased")
         else
           failure("Failed to fetch or rebase")
-        end
-      end
-
-      def checkout_main
-        say_info("Checking out main")
-
-        if success?("git checkout main")
-          pass("Checked out main")
-        else
-          failure("Failed to checkout main")
         end
       end
 
