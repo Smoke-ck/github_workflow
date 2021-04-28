@@ -260,7 +260,7 @@ module GithubWorkflow
 
       def ensure_github_config_present
         if project_config.nil? || (JSON.parse(GITHUB_CONFIG).keys - project_config.keys).any?
-          failure("Please add `.github` file containing:\n#{GITHUB_CONFIG}")
+          failure("Please add `.github_workflow` file containing:\n#{GITHUB_CONFIG}")
         end
       end
 
@@ -272,7 +272,7 @@ module GithubWorkflow
       end
 
       def project_config
-        @project_config ||= JSON.parse(File.read(".github")) rescue nil
+        @project_config ||= JSON.parse(File.read(".github_workflow")) rescue nil
       end
 
       def oauth_token
