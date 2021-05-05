@@ -82,7 +82,7 @@ module GithubWorkflow
     def status
       ensure_github_config_present
       ensure_origin_exists
-      response = JSON.parse(github_client.get("repos/#{user_and_repo}/statuses/#{current_branch}?access_token=#{oauth_token}").body)
+      response = JSON.parse(github_client.get("repos/#{user_and_repo}/statuses/#{current_branch}").body)
 
       if response.empty?
         alert "No statuses yet.  Have you pushed your branch?"
@@ -111,7 +111,7 @@ module GithubWorkflow
     desc "open", "Open issue or PR in browser"
     def open
       ensure_github_config_present
-      response = JSON.parse(github_client.get("repos/#{user_and_repo}/issues/#{issue_number_from_branch}?access_token=#{oauth_token}").body)
+      response = JSON.parse(github_client.get("repos/#{user_and_repo}/issues/#{issue_number_from_branch}").body)
       `/usr/bin/open -a "/Applications/Google Chrome.app" '#{response["html_url"]}'`
     end
 
@@ -171,15 +171,15 @@ module GithubWorkflow
 
     no_tasks do
       def get_issue(id)
-        JSON.parse(github_client.get("repos/#{user_and_repo}/issues/#{id}?access_token=#{oauth_token}").body)
+        JSON.parse(github_client.get("repos/#{user_and_repo}/issues/#{id}").body)
       end
 
       def get_pr(id)
-        JSON.parse(github_client.get("repos/#{user_and_repo}/pulls/#{id}?access_token=#{oauth_token}").body)
+        JSON.parse(github_client.get("repos/#{user_and_repo}/pulls/#{id}").body)
       end
 
       def get_prs_list
-        JSON.parse(github_client.get("repos/#{user_and_repo}/pulls?access_token=#{oauth_token}&per_page=100").body)
+        JSON.parse(github_client.get("repos/#{user_and_repo}/pulls&per_page=100").body)
       end
 
       def create_branch
@@ -204,7 +204,7 @@ module GithubWorkflow
           labels: trello_card.labels.map(&:name)
         }
 
-        response = JSON.parse(github_client.post("repos/#{user_and_repo}/issues?access_token=#{oauth_token}", issue_params.to_json).body)
+        response = JSON.parse(github_client.post("repos/#{user_and_repo}/issues", issue_params.to_json).body)
 
         @issue_id = response["number"]
       end
@@ -238,7 +238,7 @@ module GithubWorkflow
       end
 
       def current_github_username
-        JSON.parse(github_client.get("user?access_token=#{oauth_token}").body)["login"]
+        JSON.parse(github_client.get("user").body)["login"]
       end
 
       def set_trello_card(type:)
@@ -289,7 +289,7 @@ module GithubWorkflow
 
       def create_issue
         github_client.post(
-          "repos/#{user_and_repo}/issues?access_token=#{oauth_token}",
+          "repos/#{user_and_repo}/issues",
           JSON.generate(
             {
               title: options[:name]
@@ -313,7 +313,7 @@ module GithubWorkflow
 
       def convert_issue_to_pr
         github_client.post(
-          "repos/#{user_and_repo}/pulls?access_token=#{oauth_token}",
+          "repos/#{user_and_repo}/pulls",
           JSON.generate(
             {
               head: current_branch,
@@ -345,7 +345,7 @@ module GithubWorkflow
       end
 
       def branch_name_for_issue_number
-        issue = JSON.parse(github_client.get("repos/#{user_and_repo}/issues/#{issue_id}?access_token=#{oauth_token}").body)
+        issue = JSON.parse(github_client.get("repos/#{user_and_repo}/issues/#{issue_id}").body)
         "#{issue['number']}_#{issue['title'].strip.downcase.gsub(/[^a-zA-Z0-9]/, '_').squeeze("_")}"
       end
 
@@ -353,6 +353,7 @@ module GithubWorkflow
         Faraday.new(url: "https://api.github.com") do |faraday|
           faraday.request   :url_encoded
           faraday.adapter   Faraday.default_adapter
+          faraday.authorization :Bearer, oauth_token
         end
       end
 
@@ -399,7 +400,7 @@ module GithubWorkflow
       end
 
       def commits_for_range
-        JSON.parse(github_client.get("repos/#{user_and_repo}/compare/#{options[:commit_range]}?access_token=#{oauth_token}").body)
+        JSON.parse(github_client.get("repos/#{user_and_repo}/compare/#{options[:commit_range]}").body)
       end
 
       def pull_request_in_commit_range
@@ -409,10 +410,10 @@ module GithubWorkflow
 
         prs = pr_ids.map do |id|
           say_info("Fetching Pull Request ##{id}")
-          pr = github_client.get("repos/#{user_and_repo}/pulls/#{id}?access_token=#{oauth_token}")
+          pr = github_client.get("repos/#{user_and_repo}/pulls/#{id}")
 
           if pr.status == 404
-            JSON.parse(github_client.get("repos/#{user_and_repo}/issues/#{id}?access_token=#{oauth_token}").body)
+            JSON.parse(github_client.get("repos/#{user_and_repo}/issues/#{id}").body)
           else
             JSON.parse(pr.body)
           end
