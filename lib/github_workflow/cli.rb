@@ -207,6 +207,9 @@ module GithubWorkflow
         response = JSON.parse(github_client.post("repos/#{user_and_repo}/issues", issue_params.to_json).body)
 
         @issue_id = response["number"]
+
+        github_client.post("/repos/#{user_and_repo}/issues/#{@issue_id}/comments", { body: trello_card.short_url }.to_json)
+        trello_card.add_attachment response["html_url"]
       end
 
       def issue_body_from_trello_card
@@ -251,7 +254,7 @@ module GithubWorkflow
             Trello::Board.find(project_config["trello_board_id"])
           end
 
-        @trello_card = trello_board.cards.detect { |card| card.short_id == options["card_number"].to_i }
+        @trello_card = trello_board.find_card(options["card_number"].to_i)
       end
 
       def trello_card
