@@ -383,7 +383,8 @@ module GithubWorkflow
       def stash_pop
         if @stashed
           say_info("Stash pop")
-          `git stash pop --quiet`
+          `git stash pop`
+          nil
         end
       end
 
