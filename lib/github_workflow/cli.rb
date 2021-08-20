@@ -522,6 +522,10 @@ module GithubWorkflow
         @deploy_information ||= {}
       end
 
+      def deploy_information_body
+        slack_blockkit_component.render
+      end
+
       def refresh_project_config!
         @project_config = parse_github_workflow_dotfile
       end
@@ -549,6 +553,10 @@ module GithubWorkflow
           faraday.request   :url_encoded
           faraday.adapter   Faraday.default_adapter
         end
+      end
+
+      def slack_blockkit_component
+        @slack_blockkit_component ||= SlackBlockkitComponent.new(deploy_information)
       end
     end
   end
