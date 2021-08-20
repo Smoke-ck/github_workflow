@@ -22,6 +22,19 @@ module GithubWorkflow
       }
     TEXT
 
+    REPO_CONFIG = <<~TEXT
+      {
+        "webhook_url": "/token/with/secret",
+        "repos": {
+          "daisy-bill":   "path/to/your/local/daisyBill",
+          "auth-inbox":   "path/to/your/local/auth-inbox",
+          "ellis":        "path/to/your/local/ellis",
+          "fee-schedule": "path/to/your/local/fee_schedule",
+          "knowledgable": "path/to/your/local/knowledgable"
+        }
+      }
+    TEXT
+
     include Thor::Actions
 
     default_task :trello
@@ -55,9 +68,7 @@ module GithubWorkflow
     desc "start", "Create branch named with issue number and issue title"
     method_option :issue_id, aliases: "-i", type: :string, required: true
     def start
-      ensure_github_config_present
-      stash
-      rebase_main
+      init_fresh_main
       create_branch
       stash_pop
     end
@@ -169,6 +180,13 @@ module GithubWorkflow
       puts formatted_deploy_notes
     end
 
+    desc "deploy_prep", "Generate Deploy information and post it to slack"
+    def deploy_prep
+      ensure_repo_config_present
+      compile_deploy_information
+      post_to_slack
+    end
+
     no_tasks do
       def get_issue(id)
         JSON.parse(github_client.get("repos/#{user_and_repo}/issues/#{id}").body)
@@ -272,10 +290,6 @@ module GithubWorkflow
           config.developer_public_key = project_config["trello_key"]
           config.member_token = project_config["trello_token"]
         end
-      end
-
-      def project_config
-        @project_config ||= JSON.parse(File.read(".github_workflow")) rescue nil
       end
 
       def oauth_token
@@ -424,7 +438,7 @@ module GithubWorkflow
         end
       end
 
-      def formatted_deploy_notes
+      def formatted_deploy_notes(repo: nil)
         pull_request_in_commit_range.map do |pr|
           deploy_note = pr["body"].to_s.split("**Deploy Note:**")[1].to_s.split(/\n/)[0].to_s
 
@@ -433,7 +447,7 @@ module GithubWorkflow
           else
             %Q{Missing deploy note: #{pr["title"]}}
           end
-        end.unshift("[DaisyBill]")
+        end.unshift("[#{repo.presence || "DaisyBill"}]")
       end
 
       def success?(command)
@@ -459,6 +473,82 @@ module GithubWorkflow
       def failure(message)
         say_status("FAIL", message, :red)
         exit
+      end
+
+      def compile_deploy_information
+        say_info("Compiling deploy information")
+        repo_config.each do |name, path|
+          chdir_and_refresh(path: path)
+
+          diff                     = `heroku pipelines:diff -r staging`
+          options[:commit_range]   = diff.split("\n").last.split("/").last
+          notes                    = formatted_deploy_notes(repo: name)
+          deploy_information[name] = {
+            diff:  diff,
+            notes: notes
+          }
+
+          puts "=" * 30
+          puts notes
+          say_info("Staged changes:")
+          puts diff
+          puts "=" * 30
+        end
+      end
+
+      def post_to_slack
+        say_info("Post the output to Slack? y/n:")
+        if gets.chomp.downcase == "y"
+          slack_client.post(repo_config["webhook_url"], deploy_information_body)
+        else
+          "Exiting."
+          exit
+        end
+      end
+
+      def chdir_and_refresh(path:)
+        Dir.chdir(path)
+        refresh_project_config!
+        init_fresh_main
+      end
+
+      def init_fresh_main
+        ensure_github_config_present
+        stash
+        rebase_main
+      end
+
+      def deploy_information
+        @deploy_information ||= {}
+      end
+
+      def refresh_project_config!
+        @project_config = parse_github_workflow_dotfile
+      end
+
+      def project_config
+        @project_config ||= parse_github_workflow_dotfile
+      end
+
+      def parse_github_workflow_dotfile
+        JSON.parse(File.read(".github_workflow")) rescue nil
+      end
+
+      def repo_config
+        @repo_config ||= JSON.parse(File.read("~/.repo_config"))
+      end
+
+      def ensure_repo_config_present
+        if repo_config.nil? || (JSON.parse(REPO_CONFIG).keys - repo_config.keys).any?
+
+        failure("Please add `.repo_config` file containing:\n#{REPO_CONFIG}")
+      end
+
+      def slack_client
+        Faraday.new(url: "https://hooks.slack.com") do |faraday|
+          faraday.request   :url_encoded
+          faraday.adapter   Faraday.default_adapter
+        end
       end
     end
   end
