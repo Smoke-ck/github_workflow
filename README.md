@@ -12,4 +12,5 @@ Commands:
   github_workflow push_and_pr                       # Push branch to origin and convert Issue to Pull Request
   github_workflow start -i, --issue-id=ISSUE_ID     # Create branch named with issue number and issue title
   github_workflow status                            # Check PR CI status
+  github_workflow reviews                           # Print out reviewers list and their PRs count
 ```

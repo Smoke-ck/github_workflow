@@ -179,7 +179,7 @@ module GithubWorkflow
       end
 
       def get_prs_list
-        JSON.parse(github_client.get("repos/#{user_and_repo}/pulls&per_page=100").body)
+        JSON.parse(github_client.get("repos/#{user_and_repo}/pulls?per_page=100").body)
       end
 
       def create_branch
